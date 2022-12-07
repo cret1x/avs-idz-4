@@ -5,32 +5,38 @@
 #include <unistd.h>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <cstring>
+#include <sstream>
 
 using namespace std;
-
 
 // status: 0 - ready to call; 1 - is calling; 2 - has call; 3 - during the call
 // to: who am i calling now
 // from: who i am getting call from
 
-typedef struct talker_struct {
+struct talker_t {
     int to;
     int from;
     int status;
-} talker_t;
+};
 
 // mutex: global mutex
 // number: thread index
 // count: count of threads
 
-typedef struct args_struct {
+struct args_struct_t {
     pthread_mutex_t mutex;
     int number;
     int count;
-} args_struct_t;
+};
+
 
 // gloval vector of talkers
 static vector<talker_t> talkers;
+static vector<string> logs;
+static bool run = true;
+static bool isFileInput = false;
 
 
 // thread function for initiating phone calls
@@ -41,8 +47,14 @@ void* ringing(void *args) {
     int number = arg->number;
 
     pthread_mutex_lock(&mutex);
-    cout << "I im sender thread #" << number << endl;
-    cout.flush();   
+    if (isFileInput) {
+        stringstream ss;
+        ss << "[thread] I im sender thread #" << number << endl; 
+        logs.push_back(ss.str());
+    } else {
+        cout << "[thread] I im sender thread #" << number << endl;
+        cout.flush();   
+    }
     pthread_mutex_unlock(&mutex);
 
     while (true) {
@@ -51,6 +63,10 @@ void* ringing(void *args) {
             index = rand() % count;
         }
         pthread_mutex_lock(&mutex);
+        if (!run) {
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
         if (talkers[number].status == 0 && talkers[index].status == 0) {
             talkers[index].from = number;
             talkers[index].to = index;
@@ -78,23 +94,46 @@ void* answering(void *args) {
     int number = arg->number;
 
     pthread_mutex_lock(&mutex);
-    cout << "I am reciever thread #" << number << endl;
-    cout.flush();
+    if (isFileInput) {
+        stringstream ss;
+        ss << "[thread] I am reciever thread #" << number << endl; 
+        logs.push_back(ss.str());
+    } else {
+        cout << "[thread] I am reciever thread #" << number << endl;
+        cout.flush();   
+    }
     pthread_mutex_unlock(&mutex);
 
 
     while (true) {
         pthread_mutex_lock(&mutex);
+        if (!run) {
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
         if (talkers[number].status == 1) {
-            cout << "[start] " << talkers[number].from << " -> " << talkers[number].to << endl;
+            if (isFileInput) {
+                stringstream ss;
+                ss << "[start] " << talkers[number].from << " -> " << talkers[number].to << endl;
+                logs.push_back(ss.str());
+            } else {
+                cout << "[start] " << talkers[number].from << " -> " << talkers[number].to << endl;
+                cout.flush();   
+            }
             talkers[number].status == 3;
             talkers[talkers[number].from].status == 3;
             cout.flush();
             pthread_mutex_unlock(&mutex);
             sleep(rand() % 10);
             pthread_mutex_lock(&mutex);
-            cout << "[end] " << talkers[number].from << " -> " << talkers[number].to << endl;
-            cout.flush();
+            if (isFileInput) {
+                stringstream ss;
+                ss << "[end] " << talkers[number].from << " -> " << talkers[number].to << endl;
+                logs.push_back(ss.str());
+            } else {
+                cout << "[end] " << talkers[number].from << " -> " << talkers[number].to << endl;
+                cout.flush();   
+            }
             talkers[talkers[number].from].from = -1;
             talkers[talkers[number].from].to = -1;
             talkers[talkers[number].from].status = 0;
@@ -110,62 +149,160 @@ void* answering(void *args) {
     return nullptr;
 }
 
+void* key_press_thread(void *args) {
+    args_struct_t *arg = (args_struct_t*) args;
+    pthread_mutex_t mutex = arg->mutex;
+    while(cin.get() != 'q');
+    pthread_mutex_lock(&mutex);
+    run = false;
+    pthread_mutex_unlock(&mutex);
+}
+
 void* observe(void *args) {
     args_struct_t *arg = (args_struct_t*) args;
     pthread_mutex_t mutex = arg->mutex;
     while(true) {
         pthread_mutex_lock(&mutex);
-        cout << "[status] " << flush;
-        for (int i = 0; i < talkers.size(); i++) {
-            cout << "(" << talkers[i].to << " " << talkers[i].from << " " << talkers[i].status << ") " << flush;
+        if (!run) {
+            pthread_mutex_unlock(&mutex);
+            break;
         }
-        cout << endl;
-        cout.flush();
+        if (isFileInput) {
+                stringstream ss;
+                ss << "[status] ";
+                for (int i = 0; i < talkers.size(); i++) {
+                    ss << "(" << talkers[i].to << " " << talkers[i].from << " " << talkers[i].status << ") ";
+                }
+                ss << endl;
+                logs.push_back(ss.str());
+            } else {
+                cout << "[status] "; 
+                for (int i = 0; i < talkers.size(); i++) {
+                    cout << "(" << talkers[i].to << " " << talkers[i].from << " " << talkers[i].status << ") " << flush;
+                }
+                cout << endl;
+                cout.flush();
+            }
         pthread_mutex_unlock(&mutex);
         sleep(3);
     }
 }
 
 
-int main() {
-    srand(0);
-    cout << "Input talkers count: ";
+int read_int_from_file(char* fname) {
+
+}
+
+int main(int argc, char const *argv[]) {
+
+    if (argc < 3) {
+        cout << "Invalid args count!\n";
+        return 0;
+    }
     int n;
-    cin >> n; 
+    if (strcmp(argv[1], "-c") == 0) {
+        try {
+            n = atoi(argv[2]);
+        } catch (exception e) {
+            cout << "Invalid talkers number!\n";
+            return 0;
+        }
+    } else if (strcmp(argv[1], "-f") == 0) {
+        if (argc < 4) {
+            cout << "Invalid args count!\n";
+            return 0;
+        }
+        ifstream fin;
+        fin.open(argv[2]);
+        if (!fin) {
+            cout << "Invalid input file!\n";
+            return 0;
+        }
+        fin >> n;
+        fin.close();
+        if (n <= 0) {
+            cout << "Invalid talkers number!\n";
+            return 0;
+        }
+        isFileInput = true;
+    } else if (strcmp(argv[1], "-r") == 0) {
+        if (argc < 4) {
+            cout << "Invalid args count!\n";
+            return 0;
+        }
+        try {
+            int low = atoi(argv[2]);
+            int high = atoi(argv[3]);
+            n = rand() % (high - low) + low;
+        } catch (exception e) {
+            cout << "Invalid limits for random!\n";
+            return 0;
+        }
+    } else {
+        cout << "Invalid flag!\n";
+        return 0;
+    }
+
+
+    srand(0);
+    if (isFileInput) {
+        stringstream ss;
+        ss << "[info] Startring program with #" << n << " talkers\n"; 
+        logs.push_back(ss.str());
+    } else {
+        cout << "[info] Startring program with #" << n << " talkers\n";
+        cout.flush();   
+    }
+    cout << "[info] Press 'q' to stop the program\n";
+    sleep(1);
+
 
     pthread_t threads[n * 2];
     pthread_t observer;
+    pthread_t controller;
+    pthread_mutex_t mutex;
+    pthread_mutex_init(&mutex, nullptr);
 
+    logs = vector<string>();
     talkers = vector<talker_t>(n);
+
     for (int i = 0; i < n; i++) {
         talker_t t {-1, -1, 0};
         talkers[i] = t;
     }
-    size_t i;
+
     args_struct_t param_pack[n];
     args_struct_t param_obs;
-    pthread_mutex_t mutex;
+    param_obs.mutex = mutex;
 
-    pthread_mutex_init(&mutex, nullptr);
-
-    for (i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         param_pack[i].mutex = mutex;
         param_pack[i].number = i;
         param_pack[i].count = n;
         pthread_create(&threads[i], nullptr, ringing, &param_pack[i]);
     }
-    for (i = n; i < n * 2; i++) {
+    for (int i = n; i < n * 2; i++) {
         pthread_create(&threads[i], nullptr, answering, &param_pack[i - n]);
     }
 
-    param_obs.mutex = mutex;
-
+    pthread_create(&controller, nullptr, key_press_thread, &param_obs);
     pthread_create(&observer, nullptr, observe, &param_obs);
-    pthread_join(observer, nullptr);
-    for (i = 0; i < n * 2; i++) {
-        pthread_join(threads[i], nullptr);
-    }
-    
+
+    pthread_join(controller, nullptr);
+
+    pthread_mutex_lock(&mutex);
+    run = false;
+    pthread_mutex_unlock(&mutex);
     pthread_mutex_destroy(&mutex);
+    if (isFileInput) {
+        cout << "[info] Saving logs to file...\n";
+        ofstream fout;
+        fout.open(argv[3]);
+        for (string line: logs) {
+            fout << line;
+        }
+        fout.close();
+    }
+    cout << "[info] Exiting the program...\n";
     return 0;
 }
