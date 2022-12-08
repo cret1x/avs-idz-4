@@ -62,12 +62,12 @@ void* ringing(void *args) {
         while (index == number) {
             index = rand() % count;
         }
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex);                                             
         if (!run) {
             pthread_mutex_unlock(&mutex);
             break;
         }
-        if (talkers[number].status == 0 && talkers[index].status == 0) {
+        if (talkers[number].status == 0 && talkers[index].status == 0) {    // if both talkers are free, init call
             talkers[index].from = number;
             talkers[index].to = index;
             talkers[index].status = 1;
@@ -111,7 +111,7 @@ void* answering(void *args) {
             pthread_mutex_unlock(&mutex);
             break;
         }
-        if (talkers[number].status == 1) {
+        if (talkers[number].status == 1) {                                  // if i am recieving the call, answer it
             if (isFileInput) {
                 stringstream ss;
                 ss << "[start] " << talkers[number].from << " -> " << talkers[number].to << endl;
@@ -125,7 +125,7 @@ void* answering(void *args) {
             cout.flush();
             pthread_mutex_unlock(&mutex);
             sleep(rand() % 10);
-            pthread_mutex_lock(&mutex);
+            pthread_mutex_lock(&mutex);                                     // after some time end the call
             if (isFileInput) {
                 stringstream ss;
                 ss << "[end] " << talkers[number].from << " -> " << talkers[number].to << endl;
@@ -149,6 +149,7 @@ void* answering(void *args) {
     return nullptr;
 }
 
+// function to monitor for key press 'q' to exit hte program
 void* key_press_thread(void *args) {
     args_struct_t *arg = (args_struct_t*) args;
     pthread_mutex_t mutex = arg->mutex;
@@ -158,6 +159,7 @@ void* key_press_thread(void *args) {
     pthread_mutex_unlock(&mutex);
 }
 
+//function to periodically print the vector of talkers
 void* observe(void *args) {
     args_struct_t *arg = (args_struct_t*) args;
     pthread_mutex_t mutex = arg->mutex;
@@ -189,12 +191,8 @@ void* observe(void *args) {
 }
 
 
-int read_int_from_file(char* fname) {
-
-}
-
 int main(int argc, char const *argv[]) {
-
+    // general args checks
     if (argc < 3) {
         cout << "Invalid args count!\n";
         return 0;
@@ -256,7 +254,7 @@ int main(int argc, char const *argv[]) {
     cout << "[info] Press 'q' to stop the program\n";
     sleep(1);
 
-
+    // creating threads 2*talkers + 2 threads for printing vector and keypress
     pthread_t threads[n * 2];
     pthread_t observer;
     pthread_t controller;
@@ -288,12 +286,14 @@ int main(int argc, char const *argv[]) {
     pthread_create(&controller, nullptr, key_press_thread, &param_obs);
     pthread_create(&observer, nullptr, observe, &param_obs);
 
+    // join only controller, beacuse it is most important
     pthread_join(controller, nullptr);
-
+    // when it dies, run = false, exit the program
     pthread_mutex_lock(&mutex);
-    run = false;
+    run = false;                
     pthread_mutex_unlock(&mutex);
     pthread_mutex_destroy(&mutex);
+    // if file, save all logs to file
     if (isFileInput) {
         cout << "[info] Saving logs to file...\n";
         ofstream fout;
