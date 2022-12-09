@@ -33,6 +33,7 @@ int main() {
             -1, -1, 0
         };
     }
+    // Parallel section 
     #pragma omp parallel num_threads(threads)
     {
         auto num = omp_get_thread_num();

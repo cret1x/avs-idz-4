@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 
 using namespace std;
 
@@ -205,6 +206,10 @@ int main(int argc, char const *argv[]) {
             cout << "Invalid talkers number!\n";
             return 0;
         }
+        if (n < 2) {
+            cout << "Invalid talkers number!\n";
+            return 0;
+        }
     } else if (strcmp(argv[1], "-f") == 0) {
         if (argc < 4) {
             cout << "Invalid args count!\n";
@@ -218,7 +223,7 @@ int main(int argc, char const *argv[]) {
         }
         fin >> n;
         fin.close();
-        if (n <= 0) {
+        if (n < 2) {
             cout << "Invalid talkers number!\n";
             return 0;
         }
@@ -231,6 +236,9 @@ int main(int argc, char const *argv[]) {
         try {
             int low = atoi(argv[2]);
             int high = atoi(argv[3]);
+            if (low < 2 || low >= high) {
+                throw invalid_argument("");
+            }
             n = rand() % (high - low) + low;
         } catch (exception e) {
             cout << "Invalid limits for random!\n";
@@ -258,6 +266,7 @@ int main(int argc, char const *argv[]) {
     pthread_t threads[n * 2];
     pthread_t observer;
     pthread_t controller;
+    // using the mutex to control access to shared variables
     pthread_mutex_t mutex;
     pthread_mutex_init(&mutex, nullptr);
 
