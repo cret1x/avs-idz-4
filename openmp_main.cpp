@@ -16,11 +16,30 @@ struct talker_t {
     int status;
 };
 
-int main() {
+int main(int argc, char *argv[]) {
+
     int n;
     bool run = true;
-    cout << "Input number of talkers: ";
-    cin >> n;
+    if (argc == 1) {
+        cout << "Input number of talkers: ";
+        cin >> n;
+        if (n < 2) {
+            cout << "Invalid talkers number!\n";
+            return 0;
+        }
+    } else {
+        try {
+            n = atoi(argv[1]);
+        } catch (exception e) {
+            cout << "Invalid talkers number!\n";
+            return 0;
+        }
+        if (n < 2) {
+            cout << "Invalid talkers number!\n";
+            return 0;
+        }
+    }
+    
     vector < talker_t > talkers = vector < talker_t > (n);
 
     cout << "[info] Startring program with #" << n << " talkers\n";

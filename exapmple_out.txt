@@ -1,0 +1,26 @@
+[info] Startring program with #6 talkers
+[thread] I im sender thread #1
+[thread] I im sender thread #0
+[thread] I am reciever thread #4
+[start] 1 -> 4
+[thread] I im sender thread #2
+[thread] I im sender thread #3
+[thread] I im sender thread #4
+[thread] I am reciever thread #1
+[thread] I am reciever thread #0
+[thread] I im sender thread #5
+[thread] I am reciever thread #3
+[start] 5 -> 3
+[status] (-1 -1 0) (4 1 2) (-1 -1 0) (3 5 1) (4 1 1) (3 5 2) 
+[thread] I am reciever thread #5
+[thread] I am reciever thread #2
+[end] 5 -> 3
+[status] (-1 -1 0) (4 1 2) (-1 -1 0) (-1 -1 0) (4 1 1) (-1 -1 0) 
+[end] 1 -> 4
+[start] 3 -> 4
+[start] 2 -> 1
+[status] (-1 -1 0) (1 2 1) (1 2 2) (4 3 2) (4 3 1) (-1 -1 0) 
+[status] (-1 -1 0) (1 2 1) (1 2 2) (4 3 2) (4 3 1) (-1 -1 0) 
+[start] 5 -> 0
+[end] 3 -> 4
+[status] (0 5 1) (1 2 1) (1 2 2) (-1 -1 0) (-1 -1 0) (0 5 2) 

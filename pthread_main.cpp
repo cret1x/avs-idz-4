@@ -12,7 +12,7 @@
 
 using namespace std;
 
-// status: 0 - ready to call; 1 - is calling; 2 - has call; 3 - during the call
+// status: 0 - ready to call; 1 - is calling; 2 - receiving a call; 3 - during the call
 // to: who am i calling now
 // from: who i am getting call from
 
@@ -59,6 +59,7 @@ void* ringing(void *args) {
     pthread_mutex_unlock(&mutex);
 
     while (true) {
+        // generate random index of talker
         int index = rand() % count;
         while (index == number) {
             index = rand() % count;
@@ -68,7 +69,8 @@ void* ringing(void *args) {
             pthread_mutex_unlock(&mutex);
             break;
         }
-        if (talkers[number].status == 0 && talkers[index].status == 0) {    // if both talkers are free, init call
+        // if both talkers are free, init call
+        if (talkers[number].status == 0 && talkers[index].status == 0) {    
             talkers[index].from = number;
             talkers[index].to = index;
             talkers[index].status = 1;
@@ -112,7 +114,8 @@ void* answering(void *args) {
             pthread_mutex_unlock(&mutex);
             break;
         }
-        if (talkers[number].status == 1) {                                  // if i am recieving the call, answer it
+        // if i am recieving the call, answer it
+        if (talkers[number].status == 1) {                                  
             if (isFileInput) {
                 stringstream ss;
                 ss << "[start] " << talkers[number].from << " -> " << talkers[number].to << endl;
@@ -121,12 +124,14 @@ void* answering(void *args) {
                 cout << "[start] " << talkers[number].from << " -> " << talkers[number].to << endl;
                 cout.flush();   
             }
+            // set status of call
             talkers[number].status == 3;
             talkers[talkers[number].from].status == 3;
             cout.flush();
             pthread_mutex_unlock(&mutex);
             sleep(rand() % 10);
-            pthread_mutex_lock(&mutex);                                     // after some time end the call
+            pthread_mutex_lock(&mutex);     
+            // after some time end the call                                
             if (isFileInput) {
                 stringstream ss;
                 ss << "[end] " << talkers[number].from << " -> " << talkers[number].to << endl;
@@ -199,6 +204,7 @@ int main(int argc, char const *argv[]) {
         return 0;
     }
     int n;
+    string outFileName;
     if (strcmp(argv[1], "-c") == 0) {
         try {
             n = atoi(argv[2]);
@@ -227,6 +233,7 @@ int main(int argc, char const *argv[]) {
             cout << "Invalid talkers number!\n";
             return 0;
         }
+        outFileName = argv[3];
         isFileInput = true;
     } else if (strcmp(argv[1], "-r") == 0) {
         if (argc < 4) {
@@ -244,12 +251,16 @@ int main(int argc, char const *argv[]) {
             cout << "Invalid limits for random!\n";
             return 0;
         }
+        if (argc == 5) {
+            outFileName = argv[4];
+            isFileInput = true;
+        }
     } else {
         cout << "Invalid flag!\n";
         return 0;
     }
 
-
+    logs = vector<string>();
     srand(0);
     if (isFileInput) {
         stringstream ss;
@@ -270,7 +281,7 @@ int main(int argc, char const *argv[]) {
     pthread_mutex_t mutex;
     pthread_mutex_init(&mutex, nullptr);
 
-    logs = vector<string>();
+    
     talkers = vector<talker_t>(n);
 
     for (int i = 0; i < n; i++) {
@@ -306,7 +317,7 @@ int main(int argc, char const *argv[]) {
     if (isFileInput) {
         cout << "[info] Saving logs to file...\n";
         ofstream fout;
-        fout.open(argv[3]);
+        fout.open(outFileName);
         for (string line: logs) {
             fout << line;
         }
